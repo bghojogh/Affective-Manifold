@@ -5,25 +5,33 @@ import os, os.path
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import pickle
+import json
 np.random.seed(0)
 
 def main():
-    dataset_name = "MNIST"  # MNIST, CIFAR10
+    with open('config.json') as f:
+        params = json.load(f)
+    save_dataset_again = False
+    dataset_name = params["dataset_name"]  # MNIST, CIFAR10
     n_samples_train, n_samples_test = 2000, 2000
+    samples_of_class_per_batch = params["samples_of_class_per_batch"]
+    n_classes = params["n_classes"]
     path_to_save_np = f'.\\dataset\\{dataset_name}\\np\\'
     path_to_save_png = f'.\\dataset\\{dataset_name}\\png\\'
-    batch_size = 50
-    path_save_pickle = f'.\\dataset\\{dataset_name}\\'
+    path_save_pickle = f'.\\dataset\\{dataset_name}\\batches_{n_classes}_classes\\'
 
+    batch_size = n_classes * samples_of_class_per_batch
     if dataset_name == "MNIST":
         X_train, X_test, y_train, y_test = read_MNIST_dataset(n_samples_train, n_samples_test)
     elif dataset_name == "CIFAR10":
         X_train, X_test, y_train, y_test = read_CIFAR10_dataset(n_samples_train, n_samples_test)
 
     X_train_classes, X_test_classes, y_train_classes, y_test_classes = separate_classes(X_train, X_test, y_train, y_test)
-    prepare_dataset(X_train_classes, X_test_classes, path_to_save_np, path_to_save_png)
-    prepare_batches(batch_size, n_classes=len(X_train_classes), path_np_data=path_to_save_np, path_save_pickle=path_save_pickle, train_data=True)
-    prepare_batches(batch_size, n_classes=len(X_train_classes), path_np_data=path_to_save_np, path_save_pickle=path_save_pickle, train_data=False)
+    assert n_classes <= len(X_train_classes), 'The selected number of classes is more than the number of existing classes in dataset!'
+    if save_dataset_again:
+        prepare_dataset(X_train_classes, X_test_classes, path_to_save_np, path_to_save_png)
+    prepare_batches(batch_size, n_classes=n_classes, path_np_data=path_to_save_np, path_save_pickle=path_save_pickle, train_data=True)
+    prepare_batches(batch_size, n_classes=n_classes, path_np_data=path_to_save_np, path_save_pickle=path_save_pickle, train_data=False)
 
 def prepare_batches(batch_size, n_classes, path_np_data, path_save_pickle, train_data=True):
     n_samples_of_class_per_batch = batch_size // n_classes
@@ -46,6 +54,8 @@ def prepare_batches(batch_size, n_classes, path_np_data, path_save_pickle, train
             break
         batches.append(batch)
         i += 1
+    if not os.path.exists(path_save_pickle):
+        os.makedirs(path_save_pickle)
     if train_data:
         with open(path_save_pickle+'batches_train.pickle', 'wb') as handle:
             pickle.dump(batches, handle, protocol=pickle.HIGHEST_PROTOCOL)

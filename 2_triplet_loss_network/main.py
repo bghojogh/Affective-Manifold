@@ -1,11 +1,3 @@
-# required tensoefrlow version: 1.14.0
-# conda install -c anaconda tensorflow-gpu==1.14.0
-
-# required tensorflow-probability version: 0.7
-# conda install -c conda-forge tensorflow-probability==0.7
-
-import Utils
-# import tensorflow as tf
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 import ResNet_Siamese
@@ -16,9 +8,9 @@ import os
 import dataset_characteristics
 import pickle
 import glob
-
-# import warnings
-# warnings.filterwarnings('ignore')
+import json
+with open('config.json') as f:
+    params = json.load(f)
 
 def main():
     #================================ settings:
@@ -26,13 +18,13 @@ def main():
     deep_model = "ResNet"  #--> "ResNet"
     loss_type = "batch_hard_triplet"
     n_res_blocks = 18  #--> 18, 34, 50, 101, 152
-    batch_size = 50  # batch_size must be the same as batch_size in the code of generating batches
     learning_rate = 1e-5
     margin_in_loss = 0.25
     feature_space_dimension = 128
-    n_samples_per_class_in_batch = 5  #--> batch_size / n_classes --> 50 / 10
-    n_classes = len(dataset_characteristics.get_class_names())
-    path_save_network_model = ".\\network_model\\" + deep_model + "\\"
+    n_classes = params["n_classes"]
+    n_samples_per_class_in_batch = params["samples_of_class_per_batch"]
+    batch_size = n_classes * n_samples_per_class_in_batch
+    path_save_network_model = f".\\saved_files\\{params['dataset_name']}\\network_model\\{deep_model}\\"
     model_dir_ = model_dir(model_name=deep_model, n_res_blocks=n_res_blocks, batch_size=batch_size, learning_rate=learning_rate)
     #================================ 
     if train_the_embedding_space:
@@ -57,12 +49,12 @@ def train_embedding_space(deep_model, n_res_blocks, batch_size, learning_rate, p
     image_height = dataset_characteristics.get_image_height()
     image_width = dataset_characteristics.get_image_width()
     image_n_channels = dataset_characteristics.get_image_n_channels()
-    path_save_embedding_space = ".\\results\\" + deep_model + "\\embedding_train_set\\"
-    path_save_validation_embedding_space = ".\\results\\" + deep_model + "\\embedding_validation_set\\"
-    path_save_loss = ".\\loss_saved\\"
-    path_save_val_error = ".\\loss_val_saved\\"
-    path_batches = ".\\dataset\\MNIST\\"
-    path_batches_val = ".\\dataset\\MNIST\\"
+    path_save_embedding_space = f".\\saved_files\\{params['dataset_name']}\\results\\{deep_model}\\embedding_train_set\\"
+    path_save_validation_embedding_space = f".\\saved_files\\{params['dataset_name']}\\results\\{deep_model}\\embedding_validation_set\\"
+    path_save_loss = f".\\saved_files\\{params['dataset_name']}\\loss_saved\\"
+    path_save_val_error = f".\\saved_files\\{params['dataset_name']}\\loss_val_saved\\"
+    path_batches = f".\\dataset\\MNIST\\batches_{n_classes}_classes\\"
+    path_batches_val = f".\\dataset\\MNIST\\batches_{n_classes}_classes\\"
     path_base_data_numpy = ".\\dataset\\MNIST\\np\\train\\"
     path_base_data_numpy_val = ".\\dataset\\MNIST\\np\\test\\"
     #================================ 

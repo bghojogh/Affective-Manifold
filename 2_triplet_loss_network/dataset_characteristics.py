@@ -1,19 +1,20 @@
+import json
+with open('config.json') as f:
+    params = json.load(f)
+
 def get_image_height():
-    # image_height = 32
-    image_height = 28
+    image_height = params["image_size"][0]
     return image_height
 
 def get_image_width():
-    # image_width = 32
-    image_width = 28
+    image_width = params["image_size"][1]
     return image_width
 
 def get_image_n_channels():
-    # n_channels = 3
-    n_channels = 1
+    n_channels = params["image_size"][2]
     return n_channels
 
 def get_class_names():
-    # class_names = ["TUMOR", "STROMA", "MUCUS", "LYMPHO", "DEBRIS", "SMOOTH MUSCLE", "ADIPOSE", "BACKGROUND", "NORMAL"]
-    class_names = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+    n_classes = params["n_classes"]
+    class_names = [str(i) for i in range(n_classes)]
     return class_names

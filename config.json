@@ -1,0 +1,6 @@
+{
+    "dataset_name": "MNIST",
+    "image_size": [28, 28, 1],
+    "samples_of_class_per_batch": 5,
+    "n_classes": 3
+}

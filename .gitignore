@@ -1,8 +1,5 @@
 dataset/*
-loss_saved/*
-loss_val_saved/*
-network_model/*
-results/*
+saved_files/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
