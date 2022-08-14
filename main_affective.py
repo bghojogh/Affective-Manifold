@@ -12,7 +12,7 @@ from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
 import json
 
-with open('config.json') as f:
+with open('./configs/config.json') as f:
     config = json.load(f)
 
 torch.manual_seed(2020)
@@ -244,9 +244,9 @@ def main():
 
     # plot the embedding of training data:
     plt.figure(figsize=(15, 10), facecolor="azure")
-    for label in np.unique(labels):
+    for label_index, label in enumerate(np.unique(labels)):
         tmp = train_results[labels==label]
-        plt.scatter(tmp[:, 0], tmp[:, 1], label=label)
+        plt.scatter(tmp[:, 0], tmp[:, 1], label=config['class_names'][label_index])
     plt.legend()
     plt.savefig(config['path_log']+"embedding.png")
     plt.show()

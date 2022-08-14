@@ -15,7 +15,7 @@ from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
 import json
 
-with open('config.json') as f:
+with open('./configs/config.json') as f:
     config = json.load(f)
 
 torch.manual_seed(2020)

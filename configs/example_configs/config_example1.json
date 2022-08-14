@@ -1,10 +1,11 @@
 {
     "path_dataset": "./dataset/",
-    "path_log": "./saved_files/",
+    "path_log": "./saved_files/example1/",
     "embedding_dims": 2,
     "batch_size": 32,
-    "epochs": 1,
+    "epochs": 10,
     "method": "distance_multiple_margins",
+    "class_names": [0, 1, 2],
     "margin_matrix": [[0, 1, 11],
                       [1, 0, 10],
                       [11, 10, 0]]
