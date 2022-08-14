@@ -113,6 +113,32 @@ class TripletLossMultipleMargins(nn.Module):
         losses = torch.relu(term_before_clipping_with_zero)
         return losses.mean()
 
+class DistanceLossMultipleMargins(nn.Module):
+    def __init__(self, margin_matrix):
+        super(DistanceLossMultipleMargins, self).__init__()
+        self.margin_matrix = margin_matrix
+        self.mse_loss = torch.nn.MSELoss()
+        self.negative_tune_method = 'actual_distance'  #--> actual_distance, greater_than_threshold --> NOTE: actual_distance works better for affective manifold
+        
+    def calc_euclidean(self, x1, x2):
+        return (x1 - x2).norm(p=2, dim=1)
+    
+    def forward(self, anchor_output: torch.Tensor, positive_output: torch.Tensor, negative_output: torch.Tensor,
+                anchor_label, negative_label) -> torch.Tensor:
+        loss_for_positives = self.mse_loss(anchor_output, positive_output)
+        distance_negative = self.calc_euclidean(anchor_output, negative_output)
+        batch_size = anchor_output.shape[0]
+        loss_for_negatives = torch.zeros(1,)
+        for sample_index in range(batch_size):
+            margin = self.margin_matrix[anchor_label[sample_index], negative_label[sample_index]]
+            if self.negative_tune_method == 'actual_distance':
+                loss_for_negatives += torch.linalg.norm(margin - distance_negative[sample_index]).pow(2)
+            elif self.negative_tune_method == 'greater_than_threshold':
+                loss_for_negatives += torch.maximum(margin - distance_negative[sample_index], torch.zeros(1,)).pow(2)
+        loss_for_negatives /= batch_size
+        losses = loss_for_positives + loss_for_negatives
+        return losses.mean()
+
 class Network(nn.Module):
     def __init__(self, emb_dim=128):
         super(Network, self).__init__()
@@ -168,11 +194,14 @@ def main():
     model = torch.jit.script(model).to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=0.001)
-    if config['method'] == 'single_margin':
+    if config['method'] == 'triplet_single_margin':
         criterion = torch.jit.script(TripletLoss())
-    elif config['method'] == 'multiple_margins':
+    elif config['method'] == 'triplet_multiple_margins':
         margin_matrix = np.asarray(config['margin_matrix'])
         criterion = torch.jit.script(TripletLossMultipleMargins(margin_matrix=torch.from_numpy(margin_matrix)))
+    elif config['method'] == 'distance_multiple_margins':
+        margin_matrix = np.asarray(config['margin_matrix'])
+        criterion = DistanceLossMultipleMargins(margin_matrix=torch.from_numpy(margin_matrix))
 
     model.train()
     for epoch in tqdm(range(epochs), desc="Epochs"):
@@ -187,9 +216,9 @@ def main():
             positive_out = model(positive_img)
             negative_out = model(negative_img)
             
-            if config['method'] == 'single_margin':
+            if config['method'] == 'triplet_single_margin':
                 loss = criterion(anchor_out, positive_out, negative_out)
-            elif config['method'] == 'multiple_margins':
+            elif (config['method'] == 'triplet_multiple_margins') or (config['method'] == 'distance_multiple_margins'):
                 loss = criterion(anchor_out, positive_out, negative_out, anchor_label, negative_label)
             loss.backward()
             optimizer.step()

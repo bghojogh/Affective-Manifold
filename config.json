@@ -1,5 +1,5 @@
 {
-    "method": "multiple_margins",
+    "method": "distance_multiple_margins",
     "margin_matrix": [[0, 1, 11],
                       [1, 0, 10],
                       [11, 10, 0]]
