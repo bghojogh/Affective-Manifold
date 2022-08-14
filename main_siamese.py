@@ -51,7 +51,6 @@ class MNIST(Dataset):
             anchor_label = self.labels[item]
 
             positive_list = self.index[self.index!=item][self.labels[self.index!=item]==anchor_label]
-
             positive_item = random.choice(positive_list)
             positive_img = self.images[positive_item].reshape(28, 28, 1)
             

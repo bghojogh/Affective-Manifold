@@ -1,6 +1,6 @@
 {
-    "dataset_name": "MNIST",
-    "image_size": [28, 28, 1],
-    "samples_of_class_per_batch": 5,
-    "n_classes": 3
+    "method": "multiple_margins",
+    "margin_matrix": [[0, 1, 11],
+                      [1, 0, 10],
+                      [11, 10, 0]]
 }

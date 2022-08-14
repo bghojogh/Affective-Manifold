@@ -10,6 +10,10 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
+import json
+
+with open('config.json') as f:
+    config = json.load(f)
 
 PATH = "./dataset/"
 
@@ -48,20 +52,20 @@ class MNIST(Dataset):
             anchor_label = self.labels[item]
 
             positive_list = self.index[self.index!=item][self.labels[self.index!=item]==anchor_label]
-
             positive_item = random.choice(positive_list)
             positive_img = self.images[positive_item].reshape(28, 28, 1)
             
             negative_list = self.index[self.index!=item][self.labels[self.index!=item]!=anchor_label]
             negative_item = random.choice(negative_list)
             negative_img = self.images[negative_item].reshape(28, 28, 1)
+            negative_label = self.labels[negative_item]
             
             if self.transform:
                 anchor_img = self.transform(self.to_pil(anchor_img))
                 positive_img = self.transform(self.to_pil(positive_img))
                 negative_img = self.transform(self.to_pil(negative_img))
             
-            return anchor_img, positive_img, negative_img, anchor_label
+            return anchor_img, positive_img, negative_img, anchor_label, negative_label
         
         else:
             if self.transform:
@@ -76,11 +80,30 @@ class TripletLoss(nn.Module):
     def calc_euclidean(self, x1, x2):
         return (x1 - x2).pow(2).sum(1)
     
-    def forward(self, anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor) -> torch.Tensor:
-        distance_positive = self.calc_euclidean(anchor, positive)
-        distance_negative = self.calc_euclidean(anchor, negative)
+    def forward(self, anchor_output: torch.Tensor, positive_output: torch.Tensor, negative_output: torch.Tensor) -> torch.Tensor:
+        distance_positive = self.calc_euclidean(anchor_output, positive_output)
+        distance_negative = self.calc_euclidean(anchor_output, negative_output)
         losses = torch.relu(distance_positive - distance_negative + self.margin)
+        return losses.mean()
 
+class TripletLossMultipleMargins(nn.Module):
+    def __init__(self, margin_matrix):
+        super(TripletLossMultipleMargins, self).__init__()
+        self.margin_matrix = margin_matrix
+        
+    def calc_euclidean(self, x1, x2):
+        return (x1 - x2).pow(2).sum(1)
+    
+    def forward(self, anchor_output: torch.Tensor, positive_output: torch.Tensor, negative_output: torch.Tensor,
+                anchor_label, negative_label) -> torch.Tensor:
+        distance_positive = self.calc_euclidean(anchor_output, positive_output)
+        distance_negative = self.calc_euclidean(anchor_output, negative_output)
+        batch_size = anchor_output.shape[0]
+        term_before_clipping_with_zero = torch.empty(batch_size,)
+        for sample_index in range(batch_size):
+            margin = self.margin_matrix[anchor_label[sample_index], negative_label[sample_index]]
+            term_before_clipping_with_zero[sample_index] = distance_positive[sample_index] - distance_negative[sample_index] + margin
+        losses = torch.relu(term_before_clipping_with_zero)
         return losses.mean()
 
 class Network(nn.Module):
@@ -138,12 +161,16 @@ def main():
     model = torch.jit.script(model).to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=0.001)
-    criterion = torch.jit.script(TripletLoss())
+    if config['method'] == 'single_margin':
+        criterion = torch.jit.script(TripletLoss())
+    elif config['method'] == 'multiple_margins':
+        margin_matrix = np.asarray(config['margin_matrix'])
+        criterion = torch.jit.script(TripletLossMultipleMargins(margin_matrix=torch.from_numpy(margin_matrix)))
 
     model.train()
     for epoch in tqdm(range(epochs), desc="Epochs"):
         running_loss = []
-        for step, (anchor_img, positive_img, negative_img, anchor_label) in enumerate(tqdm(train_loader, desc="Training", leave=False)):
+        for step, (anchor_img, positive_img, negative_img, anchor_label, negative_label) in enumerate(tqdm(train_loader, desc="Training", leave=False)):
             anchor_img = anchor_img.to(device)
             positive_img = positive_img.to(device)
             negative_img = negative_img.to(device)
@@ -153,7 +180,10 @@ def main():
             positive_out = model(positive_img)
             negative_out = model(negative_img)
             
-            loss = criterion(anchor_out, positive_out, negative_out)
+            if config['method'] == 'single_margin':
+                loss = criterion(anchor_out, positive_out, negative_out)
+            elif config['method'] == 'multiple_margins':
+                loss = criterion(anchor_out, positive_out, negative_out, anchor_label, negative_label)
             loss.backward()
             optimizer.step()
             
@@ -161,18 +191,18 @@ def main():
         print("Epoch: {}/{} - Loss: {:.4f}".format(epoch+1, epochs, np.mean(running_loss)))
 
     # save the model:
-    if not os.path.exists("./saved_files/affective/"):
-        os.makedirs("./saved_files/affective/")
+    if not os.path.exists("./saved_files/"):
+        os.makedirs("./saved_files/")
     torch.save({"model_state_dict": model.state_dict(),
                 "optimzier_state_dict": optimizer.state_dict()
-            }, "./saved_files/affective/trained_model.pth")
+            }, "./saved_files/trained_model.pth")
 
     train_results = []
     labels = []
 
     model.eval()
     with torch.no_grad():
-        for img, _, _, label in tqdm(train_loader):
+        for img, _, _, label, _ in tqdm(train_loader):
             train_results.append(model(img.to(device)).cpu().numpy())
             labels.append(label)
             
