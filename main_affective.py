@@ -27,7 +27,7 @@ if device.type == "cuda":
 
 embedding_dims = 2
 batch_size = 32
-epochs = 1
+epochs = 10
 
 class MNIST(Dataset):
     def __init__(self, df, train=True, transform=None):
@@ -35,12 +35,19 @@ class MNIST(Dataset):
         self.transform = transform
         self.to_pil = transforms.ToPILImage()
         
-        if self.is_train:            
+        if self.is_train:
             self.images = df.iloc[:, 1:].values.astype(np.uint8)
             self.labels = df.iloc[:, 0].values
             self.index = df.index.values
         else:
             self.images = df.values.astype(np.uint8)
+
+        # if len(config['margin_matrix']) != len(np.unique(self.labels)):
+        n_classes = len(config['margin_matrix'])
+        if self.is_train:
+            self.images = self.images[self.labels < n_classes, :]
+            self.labels = self.labels[self.labels < n_classes]
+            self.index = np.asarray([i for i in range(self.images.shape[0])])
 
     def __len__(self):
         return len(self.images)
