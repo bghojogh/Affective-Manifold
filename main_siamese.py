@@ -13,8 +13,10 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
+import json
 
-PATH = "./dataset/"
+with open('config.json') as f:
+    config = json.load(f)
 
 torch.manual_seed(2020)
 np.random.seed(2020)
@@ -23,10 +25,6 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 if device.type == "cuda":
     torch.cuda.get_device_name()
-
-embedding_dims = 2
-batch_size = 32
-epochs = 1
 
 class MNIST(Dataset):
     def __init__(self, df, train=True, transform=None):
@@ -117,25 +115,25 @@ def init_weights(m):
         torch.nn.init.kaiming_normal_(m.weight)
 
 def load_dataset():
-    train_df = pd.read_csv(PATH+"train.csv")
-    test_df = pd.read_csv(PATH+"test.csv")
+    train_df = pd.read_csv(config['path_dataset']+"train.csv")
+    test_df = pd.read_csv(config['path_dataset']+"test.csv")
 
     train_ds = MNIST(train_df, 
                     train=True,
                     transform=transforms.Compose([
                         transforms.ToTensor()
                     ]))
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=4)
+    train_loader = DataLoader(train_ds, batch_size=config['batch_size'], shuffle=True, num_workers=4)
 
     test_ds = MNIST(test_df, train=False, transform=transforms.ToTensor())
-    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=4)
+    test_loader = DataLoader(test_ds, batch_size=config['batch_size'], shuffle=False, num_workers=4)
 
     return train_loader, test_loader
 
 def main():
     train_loader, test_loader = load_dataset()
 
-    model = Network(embedding_dims)
+    model = Network(config['embedding_dims'])
     model.apply(init_weights)
     model = torch.jit.script(model).to(device)
 
@@ -143,7 +141,7 @@ def main():
     criterion = torch.jit.script(TripletLoss())
 
     model.train()
-    for epoch in tqdm(range(epochs), desc="Epochs"):
+    for epoch in tqdm(range(config['epochs']), desc="Epochs"):
         running_loss = []
         for step, (anchor_img, positive_img, negative_img, anchor_label) in enumerate(tqdm(train_loader, desc="Training", leave=False)):
             anchor_img = anchor_img.to(device)
@@ -160,33 +158,37 @@ def main():
             optimizer.step()
             
             running_loss.append(loss.cpu().detach().numpy())
-        print("Epoch: {}/{} - Loss: {:.4f}".format(epoch+1, epochs, np.mean(running_loss)))
+        print("Epoch: {}/{} - Loss: {:.4f}".format(epoch+1, config['epochs'], np.mean(running_loss)))
 
     # save the model:
-    if not os.path.exists("./saved_files/siamese/"):
-        os.makedirs("./saved_files/siamese/")
+    if not os.path.exists(config['path_log']):
+        os.makedirs(config['path_log'])
     torch.save({"model_state_dict": model.state_dict(),
                 "optimzier_state_dict": optimizer.state_dict()
-            }, "./saved_files/siamese/trained_model.pth")
+            }, config['path_log']+"trained_model.pth")
 
+    # get the embedding of training data:
     train_results = []
     labels = []
-
     model.eval()
     with torch.no_grad():
         for img, _, _, label in tqdm(train_loader):
             train_results.append(model(img.to(device)).cpu().numpy())
-            labels.append(label)
-            
+            labels.append(label)   
     train_results = np.concatenate(train_results)
     labels = np.concatenate(labels)
 
+    # save the embedding of training data:
+    np.save(config['path_log']+"train_results.npy", train_results)
+    np.save(config['path_log']+"labels.npy", labels)
+
+    # plot the embedding of training data:
     plt.figure(figsize=(15, 10), facecolor="azure")
     for label in np.unique(labels):
         tmp = train_results[labels==label]
         plt.scatter(tmp[:, 0], tmp[:, 1], label=label)
-
     plt.legend()
+    plt.savefig(config['path_log']+"embedding.png")
     plt.show()
 
 if __name__ == "__main__":

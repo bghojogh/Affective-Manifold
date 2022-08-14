@@ -1,4 +1,9 @@
 {
+    "path_dataset": "./dataset/",
+    "path_log": "./saved_files/",
+    "embedding_dims": 2,
+    "batch_size": 32,
+    "epochs": 1,
     "method": "distance_multiple_margins",
     "margin_matrix": [[0, 1, 11],
                       [1, 0, 10],
