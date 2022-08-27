@@ -1,4 +1,4 @@
-dataset/*
+dataset/*.csv
 saved_files/*
 
 # Byte-compiled / optimized / DLL files
