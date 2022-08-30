@@ -15,10 +15,10 @@ pip install -r requirements.txt
 ```
 - Put the dataset files `train.csv` and `test.csv` in the path `./dataset/`.
 - Change the config file in the path `./configs/config.json`. You can use the example config files in the path `./configs/example_configs/`.
-- Run the code main_affective.py:
+- Run the code `main_affective.py`:
 ```bash
 python main_affective.py
 ```
  
-This code is incpired by the code main_siamese.py, which is taken from the following Kaggle page:
+The part of code for Siamese network is inspired by the code `main_siamese.py`, which is taken from the following Kaggle page:
 - https://www.kaggle.com/code/hirotaka0122/triplet-loss-with-pytorch/notebook
