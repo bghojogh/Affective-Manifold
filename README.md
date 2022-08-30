@@ -11,7 +11,7 @@ This is the code for the following paper:
 For running the code of affective manifolds:
 - Install the required packages:
 ```bash
-pip install requirements.txt
+pip install -r requirements.txt
 ```
 - Change the config file in the path configs/config.json. You can use the example config files in the path configs/example_configs/.
 - Run the code main_affective.py:
