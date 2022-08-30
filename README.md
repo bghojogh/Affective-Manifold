@@ -13,7 +13,8 @@ For running the code of affective manifolds:
 ```bash
 pip install -r requirements.txt
 ```
-- Change the config file in the path configs/config.json. You can use the example config files in the path configs/example_configs/.
+- Put the dataset files `train.csv` and `test.csv` in the path `./dataset/`.
+- Change the config file in the path `./configs/config.json`. You can use the example config files in the path `./configs/example_configs/`.
 - Run the code main_affective.py:
 ```bash
 python main_affective.py
